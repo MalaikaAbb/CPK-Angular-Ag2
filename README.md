@@ -44,6 +44,28 @@ AG2 AGUIStream  ·  localhost:8000         ← Python / FastAPI, backend/main.py
 OpenAI  (gpt-4o-mini)
 ```
 
+The Sub-Agents route adds a fourth process. The runtime registers it as
+`subagents`:
+
+```
+Copilot Runtime  ·  localhost:8200
+  │  agents: { subagents } → new Ag2Agent({ url })
+  │  POST http://localhost:8001/subagents/
+  ▼
+AG2 (<1.0) AGUIStream  ·  localhost:8001  ← Python / FastAPI, backend/subagents/main.py
+  │  supervisor ConversableAgent → research / writing / critique sub-agents
+  ▼
+OpenAI  (gpt-5-mini, hard-coded in the showcase file)
+```
+
+It is a separate uv project because the guide's code imports `autogen`, which
+ag2 1.0 removed. `backend/subagents/pyproject.toml` uses the showcase's pin,
+`ag2[openai,ag-ui]>=0.9.0,<1.0.0`.
+
+The same runtime process also serves a second, **gated** runtime at
+`/api/copilotkit-auth` for the Authentication route. Its `onRequest` hook
+rejects any request without `Authorization: Bearer demo-token-123`.
+
 - **Why three.** Unlike the React/Next quickstart, where the runtime lives inside
   the Next app as an API route, Angular has no server route to host it — so the
   Copilot Runtime is its own Node process.
@@ -91,6 +113,7 @@ cd frontend && npm install && cd ..
 
 ```bash
 cd backend && uv sync && cd ..
+cd backend/subagents && uv sync && cd ../..   # Sub-Agents supervisor (ag2<1.0)
 ```
 
 **3. Provide the model key**
@@ -112,6 +135,7 @@ export OPENAI_API_KEY=sk-...
 | `OPENAI_API_KEY` | **agent** (`.env` or shell) | **Required.** The model key. |
 | `OPENAI_CHAT_MODEL_ID` | agent | Model for the AG2 agent. Default `gpt-4o-mini`. |
 | `WEATHER_TOOL_DELAY` | agent | Seconds `getWeather` sleeps so the tool card's in-progress state is observable. Default `1.5`; `0` disables. |
+| `AG2_SUBAGENTS_URL` | shell for the **runtime** | Where the runtime finds the Sub-Agents supervisor. Default `http://localhost:8001/subagents/`. |
 | `AG2_AGENT_URL` | shell for the **runtime** | Where the runtime finds the agent. Default `http://localhost:8000/weather/`. |
 | `PORT` | shell for the **runtime** | Runtime port. Default `8200`. |
 | `COPILOTKIT_TELEMETRY_DISABLED` | shell for the **runtime** | Opt out of anonymous runtime telemetry. |
@@ -120,7 +144,8 @@ export OPENAI_API_KEY=sk-...
 > `http://localhost:8200/api/copilotkit` in `frontend/src/app/app.config.ts`,
 > following the quickstart. If you change `PORT`, change that too.
 
-**Default ports:** frontend **4200**, runtime **8200**, agent **8000**.
+**Default ports:** frontend **4200**, runtime **8200**, agent **8000**,
+sub-agents supervisor **8001**.
 
 ---
 
@@ -142,6 +167,15 @@ INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
 INFO:     Started reloader process [12345] using StatReload
 ```
 
+**Terminal 1b — the Sub-Agents supervisor** (only needed for `/subagents`):
+
+```bash
+cd backend/subagents
+uv run main.py
+```
+
+Success looks like `Uvicorn running on http://0.0.0.0:8001`.
+
 **Terminal 2 — the runtime and the app together:**
 
 ```bash
@@ -154,7 +188,9 @@ each line prefixed by which process wrote it. Success looks like:
 
 ```
 [runtime] Copilot Runtime listening at http://localhost:8200/api/copilotkit
+[runtime] Authenticated runtime listening at http://localhost:8200/api/copilotkit-auth
 [runtime] AG2 agent: http://localhost:8000/weather/
+[runtime] AG2 sub-agents supervisor: http://localhost:8001/subagents/
 [angular]   ➜  Local:   http://localhost:4200/
 ```
 
@@ -189,7 +225,18 @@ curl -s http://localhost:8000/status
 curl -s http://localhost:8200/api/copilotkit/info
 ```
 
-Should list `default` and `support` under `agents`, with `"a2uiEnabled": true`.
+Should list `default`, `support` and `subagents` under `agents`, with
+`"a2uiEnabled": true`.
+
+**2b. The auth gate:**
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' http://localhost:8200/api/copilotkit-auth/info
+# 401
+curl -s -o /dev/null -w '%{http_code}\n' -H 'Authorization: Bearer demo-token-123' \
+  http://localhost:8200/api/copilotkit-auth/info
+# 200
+```
 
 **3. End to end** — a real run through the whole stack, including the tool:
 
@@ -231,6 +278,10 @@ agent's one-sentence summary.
 | `/shared-state/demo` | `Add a note: buy milk` | The notes list updates if the agent writes state — see Known issues. |
 | `/headless/demo` | Any message | Transcript and composer built on `injectAgentStore` stream the reply. |
 | `/threads`, `/memory` | — | Locked / empty without an Intelligence license. Expected. |
+| `/webmcp/demo` | `Which of my orders are still open?` | The agent calls `searchOrders` with `status: "open"` and names the keyboard and desk lamp. In Chrome 149+ with WebMCP enabled, the panel reads `document.modelContext: available` and the Model Context Tool Inspector lists `searchOrders`. |
+| `/webmcp/core-demo` | — | The panel lists `searchOrders`, registered on a bare `CopilotKitCore` with no runtime or agent. |
+| `/auth/demo` | **Sign in**, then `Hello` | Signed out, only the sign-in card shows. Signed in, the chat answers through the gated runtime. **Sign out** clears the header and returns to the card. |
+| `/subagents/demo` | `Research, write, and critique a short paragraph on solar panels.` | A card per sub-agent in the transcript; the delegation log on the left grows to three entries. Needs the :8001 process. |
 
 ---
 
@@ -261,8 +312,12 @@ actually runs.
 | Connection errors mentioning `localhost` | DNS resolving to IPv6 while the server binds IPv4 | Use `127.0.0.1` in `AG2_AGENT_URL`. |
 | A run starts, then hangs forever | The agent called a browser tool with no registered handler, so no result returns | Every tool the agent can call needs a matching `registerFrontendTool` / `registerHumanInTheLoop` mounted. |
 | Chat renders unstyled | Missing stylesheet | `@import "@copilotkit/angular/styles.css";` must be in `src/styles.css`. |
-| CORS errors from the browser | Runtime CORS off | Keep `cors: true` in `createCopilotNodeListener`. |
+| CORS errors from the browser | Runtime CORS missing your origin or header | `cors` in `server.ts` is credentialed: it lists exact origins and `allowHeaders`. Add any you use. |
 | Thread list empty, drawer shows a lock | No license key | Expected — not a bug. |
+| `/subagents` chat errors immediately | The :8001 supervisor is not running | `cd backend/subagents && uv run main.py`. |
+| `ModuleNotFoundError: No module named 'autogen'` | Sub-agents started from `backend/` (ag2 1.x) instead of `backend/subagents/` | Run it from `backend/subagents`, which has its own ag2<1.0 environment. |
+| `/auth/demo` chat shows a connection error after signing in | Gated runtime rejected the request | `curl` the gate as in "Verifying it works" step 2b. |
+| CORS errors on every route after this change | App served from an origin other than `:4200` / `:4000` | Credentialed CORS needs exact origins: add yours to `cors.origin` in `server.ts`. |
 | Source panels say "Source not generated" | Generated map is stale | `npm run gen:sources`. |
 
 ---
@@ -319,6 +374,42 @@ is identical to the Agno harness.
 
 ---
 
+### WebMCP, Authentication, Sub-agents
+
+- **WebMCP — `searchOrders` is self-defined.** Both of the
+  [guide's](https://docs.copilotkit.ai/angular/ag2/webmcp) examples call it
+  without defining it; `features/webmcp/search-orders.ts` returns four fixed
+  orders. The browser-agent path needs Chrome 149+ with the origin trial or
+  `chrome://flags/#enable-webmcp-testing`; elsewhere CopilotKit registers
+  nothing, by design.
+- **Authentication — adapted from the guide.** The
+  [guide](https://docs.copilotkit.ai/angular/ag2/auth) gates the runtime with
+  `createCopilotExpressHandler`; here the same `hooks.onRequest` is passed to
+  the `createCopilotNodeListener` this server already uses, on a separate
+  `/api/copilotkit-auth` runtime so the other routes stay ungated (the
+  showcase does the same). `verifySession` is the showcase's static
+  `demo-token-123` check. The guide's static `headers` in `provideCopilotKit`
+  is quoted on the page but not mounted, because it would sign in every demo.
+  `credentials: 'include'` is on the root provider, so the runtime's CORS now
+  allows only `http://localhost:4200` and `http://localhost:4000` instead of
+  `*`.
+- **Sub-agents — needs ag2 < 1.0.** The
+  [guide's](https://docs.copilotkit.ai/angular/ag2/multi-agent/subagents) Python
+  imports `autogen` (`ConversableAgent`, `ContextVariables`, `ReplyResult`).
+  ag2 1.x has equivalents (`Agent`, `ctx.variables`, `Agent.as_tool`), but none
+  of that code is published, so the showcase file runs unchanged under its own
+  pin. The guide stops at the delegation tools; the supervisor and mount come
+  from `showcase/integrations/ag2/src/agents/subagents.py`. The sub-agent and
+  supervisor models are hard-coded to `gpt-5-mini` there, so
+  `OPENAI_CHAT_MODEL_ID` does not apply. The frontend `readDelegations` keeps
+  only `status: "completed"` entries, so a failed delegation does not show in
+  the log.
+- **Bundle budget.** The source map now includes the three features and the
+  sub-agents backend, so `ng build` warns that the initial bundle is ~50 kB
+  over the 5 MB warning budget. It is still under the 7 MB error limit.
+
+---
+
 ## Project structure
 
 ```
@@ -339,7 +430,11 @@ ag2/
 │
 └── backend/                   # Python agent — AG2 over AG-UI  → :8000
     ├── pyproject.toml         # ag2[ag-ui,openai], fastapi, uvicorn, python-dotenv
-    └── main.py                # ★ Agent + getWeather tool + AGUIStream mount
+    ├── main.py                # ★ Agent + getWeather tool + AGUIStream mount
+    └── subagents/             # Sub-Agents supervisor — separate uv project, ag2<1.0 → :8001
+        ├── pyproject.toml
+        ├── subagents.py       # ★ showcase file, unchanged
+        └── main.py            # mounts subagents_app at /subagents
 ```
 
 ---
@@ -358,6 +453,12 @@ including a `getWeather` tool call and result** ✅.
 **Getting Started** — [Angular + AG2 quickstart](https://docs.copilotkit.ai/angular/ag2/quickstart) · [AG2 quickstart](https://docs.copilotkit.ai/ag2/quickstart)
 
 **Guides** — [Chat UI and customization](https://docs.copilotkit.ai/angular/ag2/guides/chat-ui) · [Frontend tools and generative UI](https://docs.copilotkit.ai/angular/ag2/guides/frontend-tools-generative-ui) · [A2UI](https://docs.copilotkit.ai/angular/ag2/guides/a2ui) · [Voice and multimodal](https://docs.copilotkit.ai/angular/ag2/guides/voice-multimodal) · [Human-in-the-loop and interrupts](https://docs.copilotkit.ai/angular/ag2/guides/human-in-the-loop) · [Shared state and agent context](https://docs.copilotkit.ai/angular/ag2/guides/shared-state) · [Threads, memory, attachments, and headless UI](https://docs.copilotkit.ai/angular/ag2/guides/threads-memory-attachments-headless)
+
+**Guides** (cont.) — [WebMCP](https://docs.copilotkit.ai/angular/ag2/webmcp)
+
+**Runtime and protocol** — [Authentication](https://docs.copilotkit.ai/angular/ag2/auth)
+
+**Multi-agent** — [Sub-Agents](https://docs.copilotkit.ai/angular/ag2/multi-agent/subagents)
 
 **Backend** — [Copilot Runtime](https://docs.copilotkit.ai/angular/ag2/backend/copilot-runtime)
 

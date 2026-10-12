@@ -12,6 +12,7 @@ import { Component } from '@angular/core';
 
 import { DemoFrame } from '../components/demo-frame';
 import { A2uiChatComponent } from '../features/a2ui/a2ui-chat.component';
+import { AuthDemoComponent } from '../features/auth/auth-demo.component';
 import { MediaChatComponent } from '../features/attachments/media-chat.component';
 import { ChatUiDemoComponent } from '../features/chat-ui/chat-ui-demo.component';
 import { HeadlessChatComponent } from '../features/headless/headless-chat.component';
@@ -20,8 +21,11 @@ import { MemoryDemoComponent } from '../features/memory/memory-demo.component';
 import { VoiceChatComponent } from '../features/media/voice-chat.component';
 import { QuickstartChat } from '../features/quickstart/quickstart-chat';
 import { SharedStateChatComponent } from '../features/shared-state/shared-state-chat.component';
+import { SubagentsChatComponent } from '../features/subagents/subagents-chat.component';
 import { ThreadsDemoComponent } from '../features/threads/threads-demo.component';
 import { ToolsChatComponent } from '../features/tools/tools-chat.component';
+import { WebmcpChatComponent } from '../features/webmcp/webmcp-chat.component';
+import { WebmcpCoreDemoComponent } from '../features/webmcp/webmcp-core-demo.component';
 
 @Component({
   selector: 'app-quickstart-demo',
@@ -120,3 +124,37 @@ export class AttachmentsDemo {}
   ></app-demo-frame>`,
 })
 export class HeadlessDemo {}
+
+@Component({
+  selector: 'app-webmcp-demo',
+  imports: [DemoFrame, WebmcpChatComponent],
+  template: `<app-demo-frame backTo="/webmcp"
+    ><app-webmcp-chat
+  /></app-demo-frame>`,
+})
+export class WebmcpDemo {}
+
+@Component({
+  selector: 'app-webmcp-core-demo-page',
+  imports: [DemoFrame, WebmcpCoreDemoComponent],
+  template: `<app-demo-frame backTo="/webmcp"
+    ><app-webmcp-core-demo
+  /></app-demo-frame>`,
+})
+export class WebmcpCoreDemo {}
+
+@Component({
+  selector: 'app-auth-demo-page',
+  imports: [DemoFrame, AuthDemoComponent],
+  template: `<app-demo-frame backTo="/auth"><app-auth-demo /></app-demo-frame>`,
+})
+export class AuthDemo {}
+
+@Component({
+  selector: 'app-subagents-demo',
+  imports: [DemoFrame, SubagentsChatComponent],
+  template: `<app-demo-frame backTo="/subagents"
+    ><app-subagents-chat
+  /></app-demo-frame>`,
+})
+export class SubagentsDemo {}

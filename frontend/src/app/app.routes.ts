@@ -53,6 +53,22 @@ export const routes: Routes = [
     path: 'headless/demo',
     loadComponent: () => import('./pages/demos').then((m) => m.HeadlessDemo),
   },
+  {
+    path: 'webmcp/demo',
+    loadComponent: () => import('./pages/demos').then((m) => m.WebmcpDemo),
+  },
+  {
+    path: 'webmcp/core-demo',
+    loadComponent: () => import('./pages/demos').then((m) => m.WebmcpCoreDemo),
+  },
+  {
+    path: 'auth/demo',
+    loadComponent: () => import('./pages/demos').then((m) => m.AuthDemo),
+  },
+  {
+    path: 'subagents/demo',
+    loadComponent: () => import('./pages/demos').then((m) => m.SubagentsDemo),
+  },
 
   // Doc routes, inside the sidebar chrome.
   {
@@ -86,6 +102,9 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/attachments'),
       },
       { path: 'headless', loadComponent: () => import('./pages/headless') },
+      { path: 'webmcp', loadComponent: () => import('./pages/webmcp') },
+      { path: 'auth', loadComponent: () => import('./pages/auth') },
+      { path: 'subagents', loadComponent: () => import('./pages/subagents') },
       { path: 'status', loadComponent: () => import('./pages/status') },
       { path: 'doc-sync', loadComponent: () => import('./pages/doc-sync') },
       { path: '**', redirectTo: '' },

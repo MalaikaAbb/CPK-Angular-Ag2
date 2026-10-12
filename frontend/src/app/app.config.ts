@@ -50,6 +50,9 @@ export const appConfig: ApplicationConfig = {
     provideClientHydration(),
     provideCopilotKit({
       runtimeUrl: 'http://localhost:8200/api/copilotkit',
+      // auth : send cookies to a cross-origin runtime start
+      credentials: 'include',
+      // auth : send cookies to a cross-origin runtime end
       a2ui: {
         recovery: { showAfterMs: 2_000, showAfterAttempts: 2 },
       },

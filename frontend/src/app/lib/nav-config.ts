@@ -151,6 +151,17 @@ export const NAV: NavGroup[] = [
           'Reading and writing agent state through injectAgentStore, and publishing read-only app context two ways.',
         status: 'working',
       },
+      {
+        path: '/webmcp',
+        hasDemo: true,
+        title: 'WebMCP',
+        docPath: '/angular/ag2/webmcp',
+        summary:
+          'A frontend tool opted into WebMCP with webmcp: { annotations }, so the same handler serves the CopilotKit agent and browser agents via document.modelContext.',
+        status: 'partial',
+        statusNote:
+          'WebMCP is experimental: browser agents can only discover the tool in Chrome 149+ with the origin trial or chrome://flags/#enable-webmcp-testing. Elsewhere CopilotKit registers nothing, and only the chat path runs.',
+      },
     ],
   },
   {
@@ -197,6 +208,36 @@ export const NAV: NavGroup[] = [
         summary:
           'A transcript and composer built from scratch on injectAgentStore and CopilotKitCore.runAgent.',
         status: 'working',
+      },
+    ],
+  },
+  {
+    title: 'Runtime and protocol',
+    routes: [
+      {
+        path: '/auth',
+        hasDemo: true,
+        title: 'Authentication',
+        docPath: '/angular/ag2/auth',
+        summary:
+          'A runtime gated by an onRequest hook, session headers set through updateRuntime, a forwardHeaders allowlist, and credentialed CORS.',
+        status: 'working',
+      },
+    ],
+  },
+  {
+    title: 'Multi-agent',
+    routes: [
+      {
+        path: '/subagents',
+        hasDemo: true,
+        title: 'Sub-agents',
+        docPath: '/angular/ag2/multi-agent/subagents',
+        summary:
+          'A supervisor delegating to research, writing, and critique sub-agents, with a live delegation log driven by shared state.',
+        status: 'partial',
+        statusNote:
+          'Needs the second backend process (backend/subagents, ag2<1.0). Verified to the model call; the live delegation log has not yet been observed against a working OpenAI key.',
       },
     ],
   },
