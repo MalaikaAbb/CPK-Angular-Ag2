@@ -1,0 +1,16 @@
+[project]
+name = "subagents"
+version = "0.1.0"
+description = "AG2 Sub-Agents supervisor, from the CopilotKit showcase, served over AG-UI for the Angular CopilotKit harness."
+requires-python = ">=3.10,<3.15"
+# The showcase's pin (showcase/integrations/ag2/requirements.txt): ag2 1.0
+# renamed `autogen` to `ag2`, and subagents.py imports `autogen`.
+dependencies = [
+    "ag2[openai,ag-ui]>=0.9.0,<1.0.0",
+    "fastapi>=0.115.0",
+    "python-dotenv>=1.0.0",
+    "uvicorn>=0.40.0",
+]
+
+[tool.uv]
+package = false
