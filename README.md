@@ -94,7 +94,7 @@ rejects any request without `Authorization: Bearer demo-token-123`.
 | Python | 3.10–3.14 (built on 3.13) | Per `backend/.python-version`; `ag2` requires ≥ 3.10. |
 | [`uv`](https://docs.astral.sh/uv/) | 0.11+ (built on 0.11.20) | Used for the backend. `pip` works too. |
 | OpenAI API key | — | Required. |
-| CopilotKit license key | — | **Optional.** Only affects the Threads and Memory routes. |
+| CopilotKit Intelligence key | — | **Required.** `CPK_INTELLIGENCE_API_KEY` in `frontend/.env`. Without it the runtime refuses to start, which takes every route down. `npx copilotkit project select` provisions one. |
 
 `@angular/cdk` must share your Angular major version. If you hit a
 peer-dependency error, pin it explicitly (`@angular/cdk@^22` on Angular 22).
@@ -277,7 +277,7 @@ agent's one-sentence summary.
 | `/human-in-the-loop/demo` | `Delete all my files` | The agent calls `requestApproval` and waits for the card's answer. The interrupt panel stays idle — the agent emits no AG-UI interrupt. |
 | `/shared-state/demo` | `Add a note: buy milk` | The notes list updates if the agent writes state — see Known issues. |
 | `/headless/demo` | Any message | Transcript and composer built on `injectAgentStore` stream the reply. |
-| `/threads`, `/memory` | — | Locked / empty without an Intelligence license. Expected. |
+| `/threads`, `/memory` | — | Threads list, replay, and accept rename / archive / delete. Memory lists if the Intelligence project is entitled; otherwise the platform answers `403 MEMORY_NOT_ENTITLED` and the panel is silently empty. |
 | `/webmcp/demo` | `Which of my orders are still open?` | The agent calls `searchOrders` with `status: "open"` and names the keyboard and desk lamp. In Chrome 149+ with WebMCP enabled, the panel reads `document.modelContext: available` and the Model Context Tool Inspector lists `searchOrders`. |
 | `/webmcp/core-demo` | — | The panel lists `searchOrders`, registered on a bare `CopilotKitCore` with no runtime or agent. |
 | `/auth/demo` | **Sign in**, then `Hello` | Signed out, only the sign-in card shows. Signed in, the chat answers through the gated runtime. **Sign out** clears the header and returns to the card. |
@@ -313,7 +313,8 @@ actually runs.
 | A run starts, then hangs forever | The agent called a browser tool with no registered handler, so no result returns | Every tool the agent can call needs a matching `registerFrontendTool` / `registerHumanInTheLoop` mounted. |
 | Chat renders unstyled | Missing stylesheet | `@import "@copilotkit/angular/styles.css";` must be in `src/styles.css`. |
 | CORS errors from the browser | Runtime CORS missing your origin or header | `cors` in `server.ts` is credentialed: it lists exact origins and `allowHeaders`. Add any you use. |
-| Thread list empty, drawer shows a lock | No license key | Expected — not a bug. |
+| Thread list empty, drawer shows a lock | `CPK_INTELLIGENCE_API_KEY` missing or invalid | Set it in `frontend/.env` and restart the runtime. |
+| Runtime exits: `CopilotKitIntelligence apiKey is required` | No Intelligence key | Same fix; `npx copilotkit project select` provisions one. |
 | `/subagents` chat errors immediately | The :8001 supervisor is not running | `cd backend/subagents && uv run main.py`. |
 | `ModuleNotFoundError: No module named 'autogen'` | Sub-agents started from `backend/` (ag2 1.x) instead of `backend/subagents/` | Run it from `backend/subagents`, which has its own ag2<1.0 environment. |
 | `/auth/demo` chat shows a connection error after signing in | Gated runtime rejected the request | `curl` the gate as in "Verifying it works" step 2b. |
@@ -369,8 +370,11 @@ is identical to the Agno harness.
   it.
 - **A2UI is inert**, as in the Agno harness — `a2ui: {}` is set on the runtime
   but no `a2ui.catalog` is supplied on the frontend.
-- **Voice, Threads, Memory** — same limits as the Agno harness: no transcription
-  service, no Intelligence license.
+- **Voice** — no transcription service, as in the Agno harness.
+- **Threads, Memory** — run on CopilotKit Intelligence (`intelligence`,
+  `identifyUser`, `memory.access` in `frontend/server.ts`). `identifyUser` and
+  `memory.access` are local placeholders: every visitor shares one user id,
+  one thread history, and one memory grant.
 
 ---
 
